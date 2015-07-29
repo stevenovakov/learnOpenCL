@@ -59,11 +59,16 @@ debug: $(TARGET)
 # gdb sees debugging symbols with this, but the executable segfaults before it
 # makes it to the first line of main.cc. Think it's a problem with linking the
 # libOpenCL.so  I have no idea why i would need to make a shared object first.
+
+# cool, write about the differences between the driver based one in
+# /usr/lib/x86_64-linux-gnu/ vs the cuda based one in /usr/local/cuda/lib64
+# include the ln -ls, etc.
+
 $(TARGET): $(OBJDIR) $(OBJECTS)
-	$(CPLR) $(CPP_FLAGS) -o $(TARGET) $(OBJECTS) $(LIBS)
+	$(CPLR) $(CPP_FLAGS) -o $(TARGET) $(OBJECTS) $(LIBS) $(GCC_PTHREAD_BUG_FLAGS)
 
 $(OBJECTS): $(OBJDIR)/%.o:%.cc
-	$(CPLR) $(CPP_FLAGS) -c $< -o $@
+	$(CPLR) $(CPP_FLAGS) -c $< -o $@ $(GCC_PTHREAD_BUG_FLAGS)
 
 $(OBJDIR):
 	@ mkdir -p $(OBJDIR)

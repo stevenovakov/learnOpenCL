@@ -34,8 +34,6 @@
   static const std::string slash="/";
 #endif
 
-static void die(int reason);
-
 //*********************************************************************
 //
 // OclEnv Constructors/Destructors
@@ -52,17 +50,6 @@ OclEnv::OclEnv(){}
 OclEnv::~OclEnv()
 {
   // delete any pointer allocated data in ConfigData
-}
-
-static void die(int reason)
-{
-  if (CL_MEM_OBJECT_ALLOCATION_FAILURE == reason)
-  {
-    puts("Ran out of device memory while allocating static buffers.");
-    exit(-1);
-  }
-  else
-    abort();
 }
 
 //*********************************************************************
@@ -179,6 +166,82 @@ size_t OclEnv::GetKernelWorkGroupInfo(uint32_t device)
   this->kernel_set.at(device).getWorkGroupInfo<size_t>(
     this->ocl_devices.at(device), CL_KERNEL_WORK_GROUP_SIZE, &wg_size);
   return wg_size;
+}
+
+void OclEnv::NewCLCommandQueues()
+{
+  this->ocl_device_queues.clear();
+
+  for (uint32_t k = 0; k < this->ocl_devices.size(); k++)
+  {
+    std::cout<<"Create CommQueue, Device: "<<k<<"\n";
+
+    this->ocl_device_queues.push_back(
+      cl::CommandQueue(this->ocl_context, this->ocl_devices[k]));
+  }
+}
+
+void OclEnv::CreateKernels()
+{
+  this->kernel_set.clear();
+
+  cl_int err;
+
+  // Read Source
+  std::string fold = "kernels";
+
+  std::string kernel_source = fold + slash + "summer.cl";
+  std::string define_list =  "-I ./oclkernels";
+
+  std::ifstream k_stream(kernel_source);
+  std::string k_code(  (std::istreambuf_iterator<char>(k_stream) ),
+                            (std::istreambuf_iterator<char>()));
+  //
+  // Build Program files here
+  //
+  // CAREFUL : this code assumes every device is identical
+  //
+
+  cl::Program::Sources k_source(
+    1,
+    std::make_pair(k_code.c_str(), k_code.length())
+  );
+
+  cl::Program k_program(cl::Program(this->ocl_context, k_source));
+
+  err = k_program.build(this->ocl_devices);
+
+  if(err != CL_SUCCESS)
+  {
+    std::cout<<"ERROR: " <<
+      " ( " << this->OclErrorStrings(err) << ")\n";
+
+    std::vector<cl::Device>::iterator dit = this->ocl_devices.begin();
+
+    std::cout<<"BUILD OPTIONS: \n" <<
+      k_program.getBuildInfo<CL_PROGRAM_BUILD_OPTIONS>(*dit) <<
+       "\n";
+    std::cout<<"BUILD LOG: \n" <<
+      k_program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(*dit) <<"\n";
+
+    exit(EXIT_FAILURE);
+  }
+
+  //
+  // Compile Kernels from Program
+  //
+  for( unsigned int k = 0; k < this->ocl_devices.size(); k++)
+  {
+    this->kernel_set.push_back(cl::Kernel(k_program,
+                                          "Summer",
+                                          NULL));
+  }
+}
+
+void OclEnv::Die(uint32_t reason)
+{
+  printf(this->OclErrorStrings(reason).c_str());
+  abort();
 }
 
 //

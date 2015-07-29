@@ -59,19 +59,15 @@ class OclEnv{
 
     void OclDeviceInfo();
 
-    void NewCLCommandQueues(std::string gpu_select);
+    void NewCLCommandQueues();
 
-    void CreateKernels(std::string kernel_name);
+    void CreateKernels();
 
     std::string OclErrorStrings(cl_int error);
 
     size_t GetKernelWorkGroupInfo(uint32_t device);
 
-    //
-    // Resource Allocation
-    //
-
-
+    void Die(uint32_t reason);
 
   private:
     //
