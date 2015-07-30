@@ -1,0 +1,72 @@
+# README
+#     for learnOpenCL
+#     Copyright (C) 2015 Steve Novakov
+#
+#     This program is free software; you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation; either version 2 of the License, or
+#     (at your option) any later version.
+#
+#     This program is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License along
+#     with this program; if not, write to the Free Software Foundation, Inc.,
+#     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+# NOTE: MAKE SURE ALL INDENTS IN MAKEFILE ARE **TABS** AND NOT SPACES
+#
+
+#
+# COMPILATION
+#
+
+Before attempting compilation, please make sure that:
+	- a working OpenCL environment is installed. Installing the relevant hardware drivers and either the NVIDIA CUDA SDK or the AMD APP SDK will satisfy this requirement.
+  - that cl.hpp has been copied over from the khronos site into /usr/local/cuda/include. The following commands should do it
+    $ cd /usr/local/cuda/include/CL
+    $ sudo wget https://www.khronos.org/registry/cl/api/1.1/cl.hpp
+    (or whatever your supported version of OpenCL is )
+  - that the system variable LD_LIBRARY_PATH has an entry for the path to libOpenCL.so.1
+  - that the system variables C_INCLUDE_PATH and CPLUS_INCLUDE_PATH have entries for the path to cl.h/cl.hpp (for nvidia it's /usr/local/cuda/include).
+
+You can compile non debug builds with just
+$ make
+and debug builds with
+$ make debug
+run in the root repository directory.
+
+Once compiled you can check that the correct linkage has occured by running
+
+$ ldd program
+  linux-vdso.so.1 =>  (0x00007ffe72ab4000)
+  libOpenCL.so.1 => /usr/lib/x86_64-linux-gnu/libOpenCL.so.1 (0x00007f5a13d13000)
+  libstdc++.so.6 => /usr/lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007f5a13a0f000)
+  libm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f5a13708000)
+  libgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007f5a134f2000)
+  libpthread.so.0 => /lib/x86_64-linux-gnu/libpthread.so.0 (0x00007f5a132d4000)
+  libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f5a12f0e000)
+  libdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007f5a12d0a000)
+  /lib64/ld-linux-x86-64.so.2 (0x00007f5a13f42000)
+
+for example.
+
+#
+# OpenCL Profiling
+#
+
+For NVIDIA GPU owners, please execute the program this way to generate a log file:
+$ COMPUTE_PROFILE=1 COMPUTE_PROFILE_CONFIG=nvvp.cfg ./program
+
+Then, use sed to convert the OpenCL event syntax into CUDA-equivalent syntax
+so that NVVP can read and display it:
+
+$ sed -f convertToCUDA.sed opencl_profile_0.log cuda_profile_0.log
+
+to view it simply run
+
+$ nvvp cuda_profile_0.log
+
+the logging configuration file and the sed file are included in this repo.

@@ -240,7 +240,8 @@ void OclEnv::CreateKernels()
 
 void OclEnv::Die(uint32_t reason)
 {
-  printf(this->OclErrorStrings(reason).c_str());
+  std::string error = this->OclErrorStrings(reason);
+  puts(error.c_str());
   abort();
 }
 
@@ -321,3 +322,5 @@ std::string OclEnv::OclErrorStrings(cl_int error)
 
   return cl_error_string[ -1*error];
 }
+
+//EOF

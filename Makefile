@@ -23,15 +23,13 @@ CPLR=g++
 
 # libOpenCL.so and OpenCL header locations in CUDA 7.0
 # I personally just make sure that LIB_OPENCL is in system LD_LIBRARY_PATH
-# and that INC_OPENCL is in PATH, and then use system  env variables to compile.
-INC_OPENCL = /usr/local/cuda/include/
+# and that /usr/local/cuda/include is in C_INCLUDE_PATH and CPLUS_INCLUDE_PATH,
+# and then use system  env variables to compile.
 
-LD_FLAGS = -L$(LIB_OPENCL)
 LIBS= -lOpenCL
-INCLUDES = -I$(INC_OPENCL)
 
-CPP_FLAGS = -Wall -ansi -pedantic -fPIC -std=c++11 $(INCLUDES)
-DBG_FLAGS = -g -Wall -ansi -pedantic -fPIC -std=c++11 $(INCLUDES)
+CPP_FLAGS = -Wall -ansi -pedantic -fPIC -std=c++11
+DBG_FLAGS = -g -Wall -ansi -pedantic -fPIC -std=c++11
 # This is for a bug with some GCC versions, involving std::thread/pthread where
 # they don't get linked properly unless this gets thrown on the end of
 # the compile statement

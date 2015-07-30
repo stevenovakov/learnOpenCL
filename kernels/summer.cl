@@ -28,3 +28,5 @@ __kernel void Summer(
 
   output[glid] = set_one[glid] + set_two[glid];
 }
+
+// EOF
