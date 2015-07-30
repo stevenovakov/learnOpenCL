@@ -25,9 +25,22 @@
 
 #include <CL/cl.hpp>
 #include "oclenv.h"
+#include "customtypes.h"
 
-int main(int argc, char **argv)
+ConfigData config = {
+  100.0,  // output data size (MB)
+  10.0,   // processing chunk size per enqueueNDRangeKernel call (MB)
+  std::vector<uint32_t>() // specific gpus to use, if empty: use all available.
+};
+
+void CLArgs(int argc, char * argv[]);
+
+int main(int argc, char * argv[])
 {
+  // Hanndle CLI parameters, if any
+
+  CLArgs(argc, argv);
+
   // Set up the OpenCL environment and compile the kernels for each device
 
   OclEnv env;
@@ -43,9 +56,9 @@ int main(int argc, char **argv)
 
   // Set up I/O containers and fill input.
 
-  float total_size = 20.0;
+  float total_size = config.data_size;
   // total size of each input array, in MB
-  float chunk_size = 2.0;
+  float chunk_size = config.chunk_size;
   // size of each chunk summed by a single kernel execution
 
   uint32_t n = static_cast<uint32_t>(total_size * 1e6 / 4.0);
@@ -200,6 +213,23 @@ int main(int argc, char **argv)
   // cleanup
 
   return 0;
+}
+
+void CLArgs(int argc, char * argv[])
+{
+  std::vector<std::string> args(argv, argv+argc);
+
+  for (uint32_t i = 0; i < args.size(); i++)
+  {
+    if (args.at(i).find("-datasize") == 0)
+    {
+      config.data_size=std::stof(args.at(i).substr(args.at(i).find('=')+1));
+    }
+    else if (args.at(i).find("-chunksize") == 0)
+    {
+      config.chunk_size=std::stof(args.at(i).substr(args.at(i).find('=')+1));
+    }
+  }
 }
 
 //EOF

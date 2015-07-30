@@ -51,6 +51,10 @@ class OclEnv{
 
     ConfigData * GetConfigData();
 
+    void SetGPUs(std::vector<uint32_t> selected_gpus);
+
+    std::vector<uint32_t> GetGPUs();
+
     //
     // OpenCL API Interface/Helper Functions
     //
@@ -84,7 +88,7 @@ class OclEnv{
     std::vector<cl::Kernel> kernel_set;
     //Every compiled kernel is stored here.
 
-    std::string ocl_routine_name;
+    std::vector<uint32_t> desired_gpus;
 
     ConfigData config_data;
 };

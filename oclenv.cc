@@ -47,10 +47,7 @@ OclEnv::OclEnv(){}
 //
 // Destructor
 //
-OclEnv::~OclEnv()
-{
-  // delete any pointer allocated data in ConfigData
-}
+OclEnv::~OclEnv(){}
 
 //*********************************************************************
 //
@@ -76,6 +73,39 @@ cl::Kernel * OclEnv::GetKernel(unsigned int kernel_num)
 ConfigData * OclEnv::GetConfigData()
 {
   return &(this->config_data);
+}
+
+void OclEnv::SetGPUs(std::vector<uint32_t> selected_gpus)
+{
+  if (this->ocl_devices.size() == 0)
+  {
+    puts("Can not assign gpus. Please initialize OpenCL Environment first.");
+    return;
+  }
+  else
+  {
+    if (selected_gpus.size() == 0)
+    {
+      for (uint32_t g = 0; g< this->ocl_devices.size(); g++)
+        this->desired_gpus.push_back(g);
+    }
+    else{
+      for (uint32_t g = 0; g < this->ocl_devices.size(); g++)
+      {
+        if (std::find(selected_gpus.begin(), selected_gpus.end(), g)
+          != selected_gpus.end() &&
+          std::find(this->desired_gpus.begin(),this->desired_gpus.end(), g)
+          == this->desired_gpus.end())
+          this->desired_gpus.push_back(g);
+      }
+      std::sort(this->desired_gpus.begin(), this->desired_gpus.end());
+    }
+  }
+}
+
+std::vector<uint32_t> OclEnv::GetGPUs()
+{
+  return this->desired_gpus;
 }
 
 //*********************************************************************
@@ -232,9 +262,8 @@ void OclEnv::CreateKernels()
   //
   for( unsigned int k = 0; k < this->ocl_devices.size(); k++)
   {
-    this->kernel_set.push_back(cl::Kernel(k_program,
-                                          "Summer",
-                                          NULL));
+    this->kernel_set.push_back(
+      cl::Kernel(k_program, "Summer", NULL));
   }
 }
 

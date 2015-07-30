@@ -39,7 +39,9 @@ struct int4{
 
 struct ConfigData
 {
-
+  float data_size;
+  float chunk_size;
+  std::vector<uint32_t> gpu_select;
 };
 
 #endif

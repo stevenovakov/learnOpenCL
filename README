@@ -54,16 +54,36 @@ $ ldd program
 for example.
 
 #
+# Execution
+#
+
+Execute the program with the default settings (data size 100MB, chunk suze 10MB)
+by simply running
+
+$ ./program
+
+You can specify total data size and chunk size (or average chunk size, depending
+on branch) with the following command line arguments
+
+$ ./program -datasize=2000 -chunksize=10
+
+where, in that example, the total input/output arrays are 2GB in size, with a
+chunk size of 10MB (do not recommend this, will just take long for no reason,
+recommend chunk sizes ~1/10-1/5 of the data size for a quick but representative
+set of data).
+
+#
 # OpenCL Profiling
 #
 
 For NVIDIA GPU owners, please execute the program this way to generate a log file:
-$ COMPUTE_PROFILE=1 COMPUTE_PROFILE_CONFIG=nvvp.cfg ./program
+
+$ COMPUTE_PROFILE=1 COMPUTE_PROFILE_CONFIG=nvvp.cfg ./program <args>
 
 Then, use sed to convert the OpenCL event syntax into CUDA-equivalent syntax
 so that NVVP can read and display it:
 
-$ sed -f convertToCUDA.sed opencl_profile_0.log cuda_profile_0.log
+$ sed -f convertToCUDA.sed opencl_profile_0.log > cuda_profile_0.log
 
 to view it simply run
 
