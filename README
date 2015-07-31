@@ -65,28 +65,27 @@ $ ./program
 You can specify total data size and chunk size (or average chunk size, depending
 on branch) with the following command line arguments
 
-$ ./program -datasize=2000 -chunksize=10
+$ ./program -datasize=2000 -chunksize=10 -gpus=0,1
 
 where, in that example, the total input/output arrays are 2GB in size, with a
 chunk size of 10MB (do not recommend this, will just take long for no reason,
 recommend chunk sizes ~1/10-1/5 of the data size for a quick but representative
-set of data).
+set of data). Make sure that the gpu indeces listed in -gpus are valid (i.e.
+that ocl_devices.at(x_i) exists for every x in -gpus=x0,..,xN).
+
+if -gpus is empty, or not passed, all gpus available in the opencl context
+will be used.
 
 #
 # OpenCL Profiling
 #
 
-For NVIDIA GPU owners, please execute the program this way to generate a log file:
+Just run the profiling.sh script included in this repo
+with any command line arguments you wish to pass to the program
+$ ./profiling.sh ./program -datasize=2000 -chunksize=10 -gpus=0,1
 
-$ COMPUTE_PROFILE=1 COMPUTE_PROFILE_CONFIG=nvvp.cfg ./program <args>
+to view it then run
 
-Then, use sed to convert the OpenCL event syntax into CUDA-equivalent syntax
-so that NVVP can read and display it:
-
-$ sed -f convertToCUDA.sed opencl_profile_0.log > cuda_profile_0.log
-
-to view it simply run
-
-$ nvvp cuda_profile_0.log
+$ nvvp cuda_profile.log
 
 the logging configuration file and the sed file are included in this repo.

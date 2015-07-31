@@ -1,5 +1,5 @@
-/*
-# customtypes.h
+#!/bin/bash
+# profiling.sh
 #     for learnOpenCL
 #     Copyright (C) 2015 Steve Novakov
 
@@ -16,38 +16,17 @@
 #     You should have received a copy of the GNU General Public License along
 #     with this program; if not, write to the Free Software Foundation, Inc.,
 #     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-*/
 
-#ifndef OCLPTX_CUSTOMTYPES_H_
-#define OCLPTX_CUSTOMTYPES_H_
+rm ./*.log
 
-struct float3
-{
-  float x, y, z;
-};
+COMPUTE_PROFILE=1 COMPUTE_PROFILE_CONFIG=nvvp.cfg ./program $1 $2 $3
 
-struct float4
-{
-  float x, y, z, t;
-};
+find . -name 'opencl_profile*.log' | while read FILE;
+do
+  target=${FILE//opencl/cuda};
+  sed -f ./convertToCUDA.sed $FILE > $target;
+done
 
-struct int3
-{
-  float x, y, z;
-};
+cat cuda_profile_*.log > cuda_profile.log
 
-struct int4
-{
-  float x, y, z, t;
-};
 
-struct ConfigData
-{
-  float data_size;
-  float chunk_size;
-  std::vector<uint32_t> gpu_select;
-};
-
-#endif
-
-// EOF

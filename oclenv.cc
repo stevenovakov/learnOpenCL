@@ -156,7 +156,7 @@ void OclEnv::OclDeviceInfo()
 
   std::string device_name;
 
-  for(std::vector<cl::Device>::iterator dit = this->ocl_devices.begin();
+  for (std::vector<cl::Device>::iterator dit = this->ocl_devices.begin();
     dit != this->ocl_devices.end(); ++dit)
   {
 
@@ -241,7 +241,7 @@ void OclEnv::CreateKernels()
 
   err = k_program.build(this->ocl_devices);
 
-  if(err != CL_SUCCESS)
+  if (err != CL_SUCCESS)
   {
     std::cout<<"ERROR: " <<
       " ( " << this->OclErrorStrings(err) << ")\n";
@@ -260,7 +260,7 @@ void OclEnv::CreateKernels()
   //
   // Compile Kernels from Program
   //
-  for( unsigned int k = 0; k < this->ocl_devices.size(); k++)
+  for (unsigned int k = 0; k < this->ocl_devices.size(); k++)
   {
     this->kernel_set.push_back(
       cl::Kernel(k_program, "Summer", NULL));
