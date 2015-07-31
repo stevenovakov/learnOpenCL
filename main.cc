@@ -108,7 +108,7 @@ int main(int argc, char * argv[])
 
   cl_int err;
 
-  cl::Context * cntxt = env.GetContext();
+  std::vector<cl::Context*> cntxts;
   std::vector<cl::CommandQueue*> cqs;
   std::vector<cl::Kernel*> kerns;
 
@@ -142,10 +142,11 @@ int main(int argc, char * argv[])
 
   for (uint32_t d = 0; d < gpus.size(); d++)
   {
+    cntxts.push_back(env.GetContext(gpus.at(d)));
     cqs.push_back(env.GetCq(gpus.at(d)));
     kerns.push_back(env.GetKernel(gpus.at(d)));
 
-    ones.push_back(cl::Buffer(  (*cntxt), // cl::Context &context
+    ones.push_back(cl::Buffer(  (*cntxts.back()), // cl::Context &context
                                 CL_MEM_READ_ONLY, // cl_mem_flags
                                 buffer_mem_size, // size_t size
                                 NULL, // void *host_ptr
@@ -156,12 +157,12 @@ int main(int argc, char * argv[])
 
     // Set up data container OpenCL buffers
 
-    twos.push_back(cl::Buffer((*cntxt), CL_MEM_READ_ONLY, buffer_mem_size,
-      NULL, &err));
+    twos.push_back(cl::Buffer((*cntxts.back()),
+      CL_MEM_READ_ONLY, buffer_mem_size, NULL, &err));
     if (CL_SUCCESS != err)
       env.Die(err);
-    outs.push_back(cl::Buffer((*cntxt), CL_MEM_READ_ONLY, buffer_mem_size,
-      NULL, &err));
+    outs.push_back(cl::Buffer((*cntxts.back()),
+      CL_MEM_WRITE_ONLY, buffer_mem_size, NULL, &err));
     if (CL_SUCCESS != err)
       env.Die(err);
 

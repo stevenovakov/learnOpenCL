@@ -40,7 +40,7 @@ class OclEnv{
     // Container Set/Get
     //
 
-    cl::Context * GetContext();
+    cl::Context * GetContext(uint32_t device_num);
 
     cl::Device * GetDevice(uint32_t device_num);
     uint32_t HowManyDevices();
@@ -77,7 +77,7 @@ class OclEnv{
     //
     // OpenCL Objects
     //
-    cl::Context ocl_context;
+    std::vector<cl::Context> ocl_contexts;
 
     std::vector<cl::Platform> ocl_platforms;
 

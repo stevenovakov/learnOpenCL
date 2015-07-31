@@ -55,9 +55,9 @@ OclEnv::~OclEnv(){}
 //
 //*********************************************************************
 
-cl::Context * OclEnv::GetContext()
+cl::Context * OclEnv::GetContext(uint32_t device_num)
 {
-  return &(this->ocl_context);
+  return &(this->ocl_contexts.at(device_num));
 }
 
 cl::CommandQueue * OclEnv::GetCq(unsigned int device_num)
@@ -138,9 +138,20 @@ void OclEnv::OclInit()
 
   this->ocl_platforms.at(0);
 
-  this->ocl_context = cl::Context(CL_DEVICE_TYPE_GPU, con_prop);
+  this->ocl_contexts.push_back(cl::Context(CL_DEVICE_TYPE_GPU, con_prop));
 
-  this->ocl_devices = this->ocl_context.getInfo<CL_CONTEXT_DEVICES>();
+  this->ocl_devices.push_back(
+    this->ocl_contexts.back().getInfo<CL_CONTEXT_DEVICES>().at(0));
+
+  // 1 context per device
+
+  for (uint32_t d = 1;
+    d < this->ocl_contexts.back().getInfo<CL_CONTEXT_DEVICES>().size(); d++)
+  {
+    this->ocl_contexts.push_back(cl::Context(CL_DEVICE_TYPE_GPU, con_prop));
+    this->ocl_devices.push_back(
+      this->ocl_contexts.back().getInfo<CL_CONTEXT_DEVICES>().at(d));
+  }
 
   printf("OpenCL Environment Initialized.\n");
 }
@@ -207,7 +218,7 @@ void OclEnv::NewCLCommandQueues()
     std::cout<<"Create CommQueue, Device: "<<k<<"\n";
 
     this->ocl_device_queues.push_back(
-      cl::CommandQueue(this->ocl_context, this->ocl_devices[k],
+      cl::CommandQueue(this->ocl_contexts.at(k), this->ocl_devices.at(k),
         CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE ||  CL_QUEUE_PROFILING_ENABLE));
   }
 }
@@ -234,35 +245,34 @@ void OclEnv::CreateKernels()
   //
 
   cl::Program::Sources k_source(
-    1,
-    std::make_pair(k_code.c_str(), k_code.length())
-  );
+    1, std::make_pair(k_code.c_str(), k_code.length()));
 
-  cl::Program k_program(cl::Program(this->ocl_context, k_source));
-
-  err = k_program.build(this->ocl_devices);
-
-  if (err != CL_SUCCESS)
+  for (uint32_t d = 0; d < this->ocl_devices.size(); d++)
   {
-    std::cout<<"ERROR: " <<
-      " ( " << this->OclErrorStrings(err) << ")\n";
+    cl::Program k_program(cl::Program(this->ocl_contexts.at(d), k_source));
 
-    std::vector<cl::Device>::iterator dit = this->ocl_devices.begin();
+    err = k_program.build(this->ocl_devices);
 
-    std::cout<<"BUILD OPTIONS: \n" <<
-      k_program.getBuildInfo<CL_PROGRAM_BUILD_OPTIONS>(*dit) <<
-       "\n";
-    std::cout<<"BUILD LOG: \n" <<
-      k_program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(*dit) <<"\n";
+    if (err != CL_SUCCESS)
+    {
+      std::cout<<"ERROR: " <<
+        " ( " << this->OclErrorStrings(err) << ")\n";
 
-    exit(EXIT_FAILURE);
-  }
+      std::vector<cl::Device>::iterator dit = this->ocl_devices.begin();
+
+      std::cout<<"BUILD OPTIONS: \n" <<
+        k_program.getBuildInfo<CL_PROGRAM_BUILD_OPTIONS>(*dit) <<
+         "\n";
+      std::cout<<"BUILD LOG: \n" <<
+        k_program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(*dit) <<"\n";
+
+      exit(EXIT_FAILURE);
+    }
 
   //
   // Compile Kernels from Program
   //
-  for (unsigned int k = 0; k < this->ocl_devices.size(); k++)
-  {
+
     this->kernel_set.push_back(
       cl::Kernel(k_program, "Summer", NULL));
   }
