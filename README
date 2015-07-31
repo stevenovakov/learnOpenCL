@@ -73,7 +73,7 @@ recommend chunk sizes ~1/10-1/5 of the data size for a quick but representative
 set of data). Make sure that the gpu indeces listed in -gpus are valid (i.e.
 that ocl_devices.at(x_i) exists for every x in -gpus=x0,..,xN).
 
-if -gpus is empty, or not passed, all gpus available in the opencl context
+If -gpus is empty, or not passed, all gpus available in the opencl context
 will be used.
 
 #

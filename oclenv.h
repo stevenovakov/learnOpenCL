@@ -71,7 +71,7 @@ class OclEnv{
 
     size_t GetKernelWorkGroupInfo(uint32_t device);
 
-    void Die(uint32_t reason);
+    void Die(uint32_t reason, std::string additional = "");
 
   private:
     //

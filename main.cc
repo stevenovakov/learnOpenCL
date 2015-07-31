@@ -116,6 +116,30 @@ int main(int argc, char * argv[])
   std::vector<cl::Buffer> twos;
   std::vector<cl::Buffer> outs;
 
+  std::vector< std::vector<cl::Event> > kernel_events_1; // c = 0
+  std::vector< std::vector<cl::Event> > kernel_events_2; // c != 0
+  std::vector< std::vector<cl::Event> > read_events;
+
+  // For every sub vector of events the order of events is:
+  // 0) write one 1) write two 2) read_out 3) enqueueNDrangeKernel
+
+  std::vector< std::vector<cl::Event> > * kernel_events = &kernel_events_1;
+
+  for (uint32_t d = 0; d < gpus.size(); d++)
+  {
+    kernel_events_1.push_back(std::vector<cl::Event>());
+    kernel_events_2.push_back(std::vector<cl::Event>());
+
+    read_events.push_back(std::vector<cl::Event>());
+    read_events.back().push_back(cl::Event());
+
+    for (uint32_t i = 0; i < 2; i++)
+      kernel_events_1.back().push_back(cl::Event());
+    for (uint32_t i = 0; i < 3; i++)
+      kernel_events_2.back().push_back(cl::Event());
+  }
+
+
   for (uint32_t d = 0; d < gpus.size(); d++)
   {
     cqs.push_back(env.GetCq(gpus.at(d)));
@@ -165,7 +189,7 @@ int main(int argc, char * argv[])
         buffer_mem_size, // total write size (bytes)
         &input_one.at(d * n_gpu + c * n_chunk), // pointer to root of data array
         NULL, // no events to wait on
-        NULL // no events to link to for status updates
+        &kernel_events->at(d).at(0) // output event info
       );
       if (CL_SUCCESS != err)
         env.Die(err);
@@ -177,7 +201,7 @@ int main(int argc, char * argv[])
         buffer_mem_size, // total write size (bytes)
         &input_two.at(d * n_gpu + c * n_chunk), // pointer to root of data array
         NULL, // no events to wait on
-        NULL // no events to link to for status updates
+        &kernel_events->at(d).at(1) // output event info
       );
       if (CL_SUCCESS != err)
         env.Die(err);
@@ -188,48 +212,52 @@ int main(int argc, char * argv[])
     // execute the kernel
     for (uint32_t d = 0; d < gpus.size(); d++)
     {
-      cqs.at(d)->finish();
-
       err = cqs.at(d)->enqueueNDRangeKernel(
         (*kerns.at(d)), // address of kernel
         offset, // starting global index
         compute_range, // ending global index
         cl::NullRange, // work items / work group (just 1)
-        NULL,
-        NULL
+        &kernel_events->at(d), // wait on these to be valid to execute
+        &read_events.at(d).at(0) // output event info
       );
+
       if (CL_SUCCESS != err)
         env.Die(err);
 
       cqs.at(d)->flush();
     }
 
+    // so that all subsequent enqueueNDRange calls wait on the read to finish
+    if (c==0)
+      kernel_events = &kernel_events_2;
+
     // read back the data
     for (uint32_t d = 0; d < gpus.size(); d++)
     {
-      cqs.at(d)->finish();
-
       err = cqs.at(d)->enqueueReadBuffer(
         outs.at(d), // address of relevant cl::Buffer
         CL_FALSE, // execute and blocking
         static_cast<uint32_t>(0), // offset (bytes)
         buffer_mem_size, // total write size (bytes)
         &output.at(d * n_gpu + c * n_chunk), // pointer to root of data array
-        NULL, // no events to wait on
-        NULL  // no events to link to for status updates
+        &read_events.at(d), // wait until kernel finishes to execute
+        &kernel_events->at(d).at(2) // no events to link to for status updates
       );
 
       if (CL_SUCCESS != err)
         env.Die(err);
-    }
 
-    // Don't need to clFinish here, we can start copying the new input data.
-    // There's a blocking statement before each enqueueNDRangeKernel anyways.
+      cqs.at(d)->flush();
+    }
   }
 
-  // will clFinish here to make sure the last enqueueReadBuffers are done.
+  // make sure the last reads are done
   for (uint32_t d = 0; d < gpus.size(); d++)
-    cqs.at(d)->finish();
+  {
+    err = cl::Event::waitForEvents(kernel_events->at(d));
+    if (CL_SUCCESS != err)
+          env.Die(err);
+  }
 
   printf("100.00%% complete\n");
 
@@ -245,8 +273,8 @@ int main(int argc, char * argv[])
   {
     uint32_t entry = int_distro(generator);
 
-    printf("%.4f + %.4f = %.4f ? %.4f\n", input_one.at(entry),
-      input_two.at(entry), output.at(entry),
+    printf("Entry %d -> %.4f + %.4f = %.4f ? %.4f\n", entry,
+      input_one.at(entry), input_two.at(entry), output.at(entry),
         input_one.at(entry) + input_two.at(entry));
   }
 

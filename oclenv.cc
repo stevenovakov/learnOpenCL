@@ -207,7 +207,8 @@ void OclEnv::NewCLCommandQueues()
     std::cout<<"Create CommQueue, Device: "<<k<<"\n";
 
     this->ocl_device_queues.push_back(
-      cl::CommandQueue(this->ocl_context, this->ocl_devices[k]));
+      cl::CommandQueue(this->ocl_context, this->ocl_devices[k],
+        CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE ||  CL_QUEUE_PROFILING_ENABLE));
   }
 }
 
@@ -267,10 +268,11 @@ void OclEnv::CreateKernels()
   }
 }
 
-void OclEnv::Die(uint32_t reason)
+void OclEnv::Die(uint32_t reason, std::string additional)
 {
   std::string error = this->OclErrorStrings(reason);
   puts(error.c_str());
+  puts(additional.c_str());
   abort();
 }
 
