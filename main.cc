@@ -136,7 +136,7 @@ int main(int argc, char * argv[])
       NULL, &err));
     if (CL_SUCCESS != err)
       env.Die(err);
-    outs.push_back(cl::Buffer((*cntxt), CL_MEM_READ_ONLY, buffer_mem_size,
+    outs.push_back(cl::Buffer((*cntxt), CL_MEM_WRITE_ONLY, buffer_mem_size,
       NULL, &err));
     if (CL_SUCCESS != err)
       env.Die(err);
