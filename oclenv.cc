@@ -75,7 +75,7 @@ ConfigData * OclEnv::GetConfigData()
   return &(this->config_data);
 }
 
-void OclEnv::SetGPUs(std::vector<uint32_t> selected_gpus)
+void OclEnv::SetGPUs(std::vector<uint32_t> gpu_select)
 {
   if (this->ocl_devices.size() == 0)
   {
@@ -84,7 +84,7 @@ void OclEnv::SetGPUs(std::vector<uint32_t> selected_gpus)
   }
   else
   {
-    if (selected_gpus.size() == 0)
+    if (gpu_select.size() == 0)
     {
       for (uint32_t g = 0; g< this->ocl_devices.size(); g++)
         this->desired_gpus.push_back(g);
@@ -92,8 +92,8 @@ void OclEnv::SetGPUs(std::vector<uint32_t> selected_gpus)
     else{
       for (uint32_t g = 0; g < this->ocl_devices.size(); g++)
       {
-        if (std::find(selected_gpus.begin(), selected_gpus.end(), g)
-          != selected_gpus.end() &&
+        if (std::find(gpu_select.begin(), gpu_select.end(), g)
+          != gpu_select.end() &&
           std::find(this->desired_gpus.begin(),this->desired_gpus.end(), g)
           == this->desired_gpus.end())
           this->desired_gpus.push_back(g);

@@ -51,7 +51,7 @@ class OclEnv{
 
     ConfigData * GetConfigData();
 
-    void SetGPUs(std::vector<uint32_t> selected_gpus);
+    void SetGPUs(std::vector<uint32_t> gpu_select);
 
     std::vector<uint32_t> GetGPUs();
 
