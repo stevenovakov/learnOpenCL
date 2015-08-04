@@ -5,3 +5,4 @@ lib/*
 program
 *.log
 *.xml
+*sublime*

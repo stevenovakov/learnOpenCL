@@ -52,6 +52,11 @@ int main(int argc, char * argv[])
 
   env.CreateKernels();
 
+  printf("N_GPUs: %lu\n", config.gpu_select.size());
+
+  // might seem superfluous but I'm validating the CLI input here against the
+  // actual environment, so that the code doesn't try to use nonexistent
+  // GPU #10000, etc
   env.SetGPUs(config.gpu_select);
 
   std::vector<uint32_t> gpus = env.GetGPUs();
@@ -258,23 +263,51 @@ int main(int argc, char * argv[])
 void CLArgs(int argc, char * argv[])
 {
   std::vector<std::string> args(argv, argv+argc);
+  bool set_datasize = false;
+  bool set_chunksize = false;
 
   for (uint32_t i = 0; i < args.size(); i++)
   {
     if (args.at(i).find("-datasize") == 0)
     {
       config.data_size=std::stof(args.at(i).substr(args.at(i).find('=')+1));
+      set_datasize = true;
     }
     else if (args.at(i).find("-chunksize") == 0)
     {
       config.chunk_size=std::stof(args.at(i).substr(args.at(i).find('=')+1));
+      set_chunksize = true;
     }
     else if (args.at(i).find("-gpus") == 0)
     {
       std::string delim = ",";
+      std::string begin = "=";
+      size_t start = 0;
+      size_t pos = 0;
+      std::string source =
+        args.at(i).erase(0, args.at(i).find("=")+begin.length());
+      std::string temp;
+      pos = source.find(delim, start);
 
+      while ( pos != std::string::npos )
+      {
+        temp = source.substr(start, pos - start);
+        start = pos + delim.length();
+        config.gpu_select.push_back(std::stoul(temp));
+
+        pos = source.find(delim, start);
+      }
+
+      temp = source.substr(start, pos - start);
+      config.gpu_select.push_back(std::stoul(temp));
     }
   }
+
+  if (set_datasize && !set_chunksize)
+    config.chunk_size = config.data_size / 2;
+
+  if (set_chunksize && !set_datasize)
+    config.data_size = config.chunk_size * 2;
 }
 
 //EOF
