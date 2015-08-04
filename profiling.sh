@@ -24,7 +24,12 @@ COMPUTE_PROFILE=1 COMPUTE_PROFILE_CONFIG=nvvp.cfg ./program $1 $2 $3
 find . -name 'opencl_profile*.log' | while read FILE;
 do
   target=${FILE//opencl/cuda};
-  sed -f ./convertToCUDA.sed $FILE > $target;
+  n_lines=$(wc -l < "$FILE");
+  if [ "$n_lines" -gt "7" ]
+  then
+    echo "Using $FILE";
+    sed -f ./convertToCUDA.sed $FILE > $target;
+  fi
 done
 
 cat cuda_profile_*.log > cuda_profile.log
