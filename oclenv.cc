@@ -147,6 +147,10 @@ void OclEnv::OclInit()
 
 void OclEnv::OclDeviceInfo()
 {
+  std::string platform_version;
+  this->ocl_platforms[0].getInfo( CL_PLATFORM_VERSION, &platform_version);
+  puts(platform_version.c_str());
+
   std::cout<<"\nLocal OpenCL Devices:\n";
 
   size_t siT[3];
