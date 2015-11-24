@@ -42,7 +42,7 @@ int main(int argc, char * argv[])
   CLArgs(argc, argv);
 
   // Set up the OpenCL environment and compile the kernels for each device
-
+  cl_int err;
   OclEnv env;
   env.OclInit();
 
@@ -60,6 +60,12 @@ int main(int argc, char * argv[])
   env.SetGPUs(config.gpu_select);
 
   std::vector<uint32_t> gpus = env.GetGPUs();
+
+  std::vector<cl::CommandQueue*> cqs;
+  for (uint32_t d = 0; d < gpus.size(); d++)
+  {
+    cqs.push_back(env.GetCq(gpus.at(d)));
+  }
 
   printf("OpenCL CommandQueues and Kernels ready.\n");
 
@@ -87,11 +93,77 @@ int main(int argc, char * argv[])
     Compute Chunk: %.3f (MB), Total Array Size: %d, GPU Array Size: %d\n",
       total_size, config.data_size, chunk_size, n, n_gpu);
 
-  std::vector<float> input_one, input_two, output;
+  uint32_t buffer_mem_size = n_chunk * sizeof(float);
+  uint32_t host_mem_size = n * sizeof(float);
 
-  input_one.resize(n);
-  input_two.resize(n);
-  output.resize(n);
+  printf("N Chunks: %d, Chunk Buffer Size: %d (B)\n",
+    n_chunks, buffer_mem_size);
+
+
+  // std::vector<float> input_one, input_two, output;
+
+  // input_one.resize(n);
+  // input_two.resize(n);
+  // output.resize(n);
+  cl::Context * cntxt = env.GetContext();
+
+  // pinned host memory
+  cl::Buffer  one_host( (*cntxt),
+                        CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR,
+                        host_mem_size, // size_t size
+                        NULL, // void *host_ptr
+                        &err // cl_int *err
+                      );
+  if (CL_SUCCESS != err)
+    env.Die(err);
+
+  cl::Buffer  two_host( (*cntxt),
+                        CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR,
+                        host_mem_size, // size_t size
+                        NULL, // void *host_ptr
+                        &err // cl_int *err
+                      );
+  if (CL_SUCCESS != err)
+    env.Die(err);
+
+  cl::Buffer  out_host( (*cntxt),
+                        CL_MEM_WRITE_ONLY | CL_MEM_ALLOC_HOST_PTR,
+                        host_mem_size, // size_t size
+                        NULL, // void *host_ptr
+                        &err // cl_int *err
+                      );
+  if (CL_SUCCESS != err)
+    env.Die(err);
+
+  // host-useable pointers to pinned host memory
+  float * input_one, * input_two, *output;
+
+  input_one = (float *) cqs.at(0)->enqueueMapBuffer(
+    one_host,
+    CL_TRUE,
+    CL_MAP_WRITE,
+    0,
+    host_mem_size,
+    NULL, NULL, NULL
+  );
+
+  input_two = (float *) cqs.at(0)->enqueueMapBuffer(
+    two_host,
+    CL_TRUE,
+    CL_MAP_WRITE,
+    0,
+    host_mem_size,
+    NULL, NULL, NULL
+  );
+
+  output = (float *) cqs.at(0)->enqueueMapBuffer(
+    out_host,
+    CL_TRUE,
+    CL_MAP_READ,
+    0,
+    host_mem_size,
+    NULL, NULL, NULL
+  );
 
   std::default_random_engine generator;
   std::uniform_real_distribution<double> distribution(0.0,1.0);
@@ -99,27 +171,18 @@ int main(int argc, char * argv[])
   puts("Generating random number sets...\n");
   for (uint32_t i = 0; i < n; i++)
   {
-    input_one.at(i) = distribution(generator);
-    input_two.at(i) = distribution(generator);
+    input_one[i] = distribution(generator);
+    input_two[i] = distribution(generator);
   }
   puts("Number sets complete.\n");
 
-  uint32_t buffer_mem_size = n_chunk * sizeof(float);
-
-  printf("N Chunks: %d, Chunk Buffer Size: %d (B)\n",
-    n_chunks, buffer_mem_size);
-
   // OpenCL setup and kernel execution
-
-  cl_int err;
-
-  cl::Context * cntxt = env.GetContext();
-  std::vector<cl::CommandQueue*> cqs;
   std::vector<cl::Kernel*> kerns;
 
-  std::vector<cl::Buffer> ones;
-  std::vector<cl::Buffer> twos;
-  std::vector<cl::Buffer> outs;
+  // device buffers
+  std::vector<cl::Buffer> ones_dev;
+  std::vector<cl::Buffer> twos_dev;
+  std::vector<cl::Buffer> outs_dev;
 
   std::vector< std::vector<cl::Event> > kernel_events_1; // c = 0
   std::vector< std::vector<cl::Event> > kernel_events_2; // c != 0
@@ -147,10 +210,9 @@ int main(int argc, char * argv[])
 
   for (uint32_t d = 0; d < gpus.size(); d++)
   {
-    cqs.push_back(env.GetCq(gpus.at(d)));
     kerns.push_back(env.GetKernel(gpus.at(d)));
 
-    ones.push_back(cl::Buffer(  (*cntxt), // cl::Context &context
+    ones_dev.push_back(cl::Buffer(  (*cntxt), // cl::Context &context
                                 CL_MEM_READ_ONLY, // cl_mem_flags
                                 buffer_mem_size, // size_t size
                                 NULL, // void *host_ptr
@@ -161,26 +223,32 @@ int main(int argc, char * argv[])
 
     // Set up data container OpenCL buffers
 
-    twos.push_back(cl::Buffer((*cntxt), CL_MEM_READ_ONLY, buffer_mem_size,
+    twos_dev.push_back(cl::Buffer((*cntxt), CL_MEM_READ_ONLY, buffer_mem_size,
       NULL, &err));
     if (CL_SUCCESS != err)
       env.Die(err);
-    outs.push_back(cl::Buffer((*cntxt), CL_MEM_WRITE_ONLY, buffer_mem_size,
+    outs_dev.push_back(cl::Buffer((*cntxt), CL_MEM_WRITE_ONLY, buffer_mem_size,
       NULL, &err));
     if (CL_SUCCESS != err)
       env.Die(err);
 
     // Set the kernel arguments
-    kerns.back()->setArg(0, ones.back());
-    kerns.back()->setArg(1, twos.back());
-    kerns.back()->setArg(2, outs.back());
+    kerns.back()->setArg(0, ones_dev.back());
+    kerns.back()->setArg(1, twos_dev.back());
+    kerns.back()->setArg(2, outs_dev.back());
 
   }
 
   cl::NDRange offset(0);
   cl::NDRange compute_range(n_chunk);
 
-  // Execute the work sets
+  // Execute the work
+
+  // For pinned memory:
+  // need to map
+  // do R/W
+  // unmap
+  // destroy
 
   for (uint32_t c = 0; c < n_chunks; c++)
   {
@@ -188,11 +256,11 @@ int main(int argc, char * argv[])
     for (uint32_t d = 0; d < gpus.size(); d++)
     {
       err = cqs.at(d)->enqueueWriteBuffer(
-        ones.at(d), // address of relevant cl::Buffer
+        ones_dev.at(d), // address of relevant cl::Buffer
         CL_FALSE, // non blocking
         static_cast<uint32_t>(0), // offset (bytes)
         buffer_mem_size, // total write size (bytes)
-        &input_one.at(d * n_gpu + c * n_chunk), // pointer to root of data array
+        &input_one[d * n_gpu + c * n_chunk], // pointer to root of data array
         NULL, // no events to wait on
         &kernel_events->at(d).at(0) // output event info
       );
@@ -200,11 +268,11 @@ int main(int argc, char * argv[])
         env.Die(err);
 
       err = cqs.at(d)->enqueueWriteBuffer(
-        twos.at(d), // address of relevant cl::Buffer
+        twos_dev.at(d), // address of relevant cl::Buffer
         CL_FALSE, // non blocking
         static_cast<uint32_t>(0), // offset (bytes)
         buffer_mem_size, // total write size (bytes)
-        &input_two.at(d * n_gpu + c * n_chunk), // pointer to root of data array
+        &input_two[d * n_gpu + c * n_chunk], // pointer to root of data array
         NULL, // no events to wait on
         &kernel_events->at(d).at(1) // output event info
       );
@@ -221,7 +289,7 @@ int main(int argc, char * argv[])
         (*kerns.at(d)), // address of kernel
         offset, // starting global index
         compute_range, // ending global index
-        cl::NullRange, // work items / work group (just 1)
+        cl::NullRange, // work items / work group (driver optimized)
         &kernel_events->at(d), // wait on these to be valid to execute
         &read_events.at(d).at(0) // output event info
       );
@@ -240,11 +308,11 @@ int main(int argc, char * argv[])
     for (uint32_t d = 0; d < gpus.size(); d++)
     {
       err = cqs.at(d)->enqueueReadBuffer(
-        outs.at(d), // address of relevant cl::Buffer
+        outs_dev.at(d), // address of relevant cl::Buffer
         CL_FALSE, // execute and blocking
         static_cast<uint32_t>(0), // offset (bytes)
         buffer_mem_size, // total write size (bytes)
-        &output.at(d * n_gpu + c * n_chunk), // pointer to root of data array
+        &output[d * n_gpu + c * n_chunk], // pointer to root of data array
         &read_events.at(d), // wait until kernel finishes to execute
         &kernel_events->at(d).at(2) // no events to link to for status updates
       );
@@ -279,11 +347,29 @@ int main(int argc, char * argv[])
     uint32_t entry = int_distro(generator);
 
     printf("Entry %d -> %.4f + %.4f = %.4f ? %.4f\n", entry,
-      input_one.at(entry), input_two.at(entry), output.at(entry),
-        input_one.at(entry) + input_two.at(entry));
+      input_one[entry], input_two[entry], output[entry],
+        input_one[entry] + input_two[entry]);
   }
 
   // cleanup
+  cqs.at(0)->enqueueUnmapMemObject( one_host,
+                                    input_one,
+                                    NULL,
+                                    NULL
+                                  );
+  cqs.at(0)->enqueueUnmapMemObject( two_host,
+                                    input_two,
+                                    NULL,
+                                    NULL
+                                  );
+  cqs.at(0)->enqueueUnmapMemObject( out_host,
+                                    output,
+                                    NULL,
+                                    NULL
+                                  );
+
+  cqs.at(0)->finish();
+
 
   return 0;
 }
