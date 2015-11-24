@@ -212,7 +212,7 @@ void OclEnv::NewCLCommandQueues()
 
     this->ocl_device_queues.push_back(
       cl::CommandQueue(this->ocl_context, this->ocl_devices[k],
-        CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE ||  CL_QUEUE_PROFILING_ENABLE));
+        CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE |  CL_QUEUE_PROFILING_ENABLE));
   }
 }
 
