@@ -75,4 +75,4 @@ clean:
 	$(RM) $(TARGET) $(OBJECTS) $(OBJDIR)/$(TARGET).so
 	$(RM) -rf $(OBJDIR)
 
-g++ -Wall -ansi -pedantic -fPIC -std=c++11 -I/usr/local/cuda/include/ -L/usr/local/cuda/lib64/ -o program lib/main.o lib/oclenv.o -lOpenCL
+#g++ -Wall -ansi -pedantic -fPIC -std=c++11 -I/usr/local/cuda/include/ -L/usr/local/cuda/lib64/ -o program lib/main.o lib/oclenv.o -lOpenCL
